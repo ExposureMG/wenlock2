@@ -29,6 +29,7 @@ FetchContent_MakeAvailable(dpp spdlog)
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/handler.cpp
+    src/log.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
