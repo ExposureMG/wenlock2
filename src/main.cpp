@@ -1,7 +1,7 @@
 #include <dpp/dpp.h>
-#include <include/dotenv.hpp>
+#include <dotenv.hpp>
  
-int main() {q
+int main() {
     dotenv::init();
     dpp::cluster bot(dotenv::getenv("TOKEN"));
 
