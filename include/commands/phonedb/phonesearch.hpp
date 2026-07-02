@@ -2,6 +2,7 @@
 #include "handler.hpp"
 #include "integrations/phonedb.hpp"
 #include "integrations/scraper.hpp"
+#include "commands/phonedb/rank.hpp"
 #include <sstream>
 
 inline Command create_phone_search_command() {
@@ -37,7 +38,6 @@ inline Command create_phone_search_command() {
 
             // Filter for actual device link tags
             for (const auto& tag : all_tags) {
-                // Heuristic: Device link href contains 'm=device' and 'id=', but does not contain '&d=' (datasheet)
                 if (tag.href.find("m=device") != std::string::npos &&
                     tag.href.find("id=") != std::string::npos &&
                     tag.href.find("&d=") == std::string::npos &&
@@ -46,19 +46,23 @@ inline Command create_phone_search_command() {
                     tag.title.find("detailed datasheet") == std::string::npos &&
                     !tag.title.empty()) {
                     
-                    // Avoid duplicate entries if they appear
+                    // Avoid duplicate entries
                     bool duplicate = false;
                     for (const auto& dev : devices) {
-                        if (dev.href == tag.href) {
-                            duplicate = true;
-                            break;
-                        }
+                        if (dev.href == tag.href) { duplicate = true; break; }
                     }
-                    if (!duplicate) {
-                        devices.push_back(tag);
-                    }
+                    if (!duplicate) devices.push_back(tag);
                 }
             }
+
+            // Re-rank results by relevance to the query
+            auto query_tokens = phonedb_tokenise(phone_query);
+            std::stable_sort(devices.begin(), devices.end(),
+                [&query_tokens](const ScrapedTag& a, const ScrapedTag& b) {
+                    return phonedb_relevance_score(a.title, query_tokens) >
+                           phonedb_relevance_score(b.title, query_tokens);
+                }
+            );
 
             dpp::embed embed = dpp::embed()
                 .set_color(dpp::colors::sti_blue)

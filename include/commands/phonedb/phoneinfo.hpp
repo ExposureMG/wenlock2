@@ -1,6 +1,7 @@
 #pragma once
 #include "handler.hpp"
 #include "integrations/phonedb.hpp"
+#include "commands/phonedb/rank.hpp"
 #include <algorithm>
 
 inline Command create_phone_info_command() {
@@ -59,6 +60,15 @@ inline Command create_phone_info_command() {
                     event.edit_original_response(dpp::message(event.command.channel_id, embed));
                     return;
                 }
+
+                // Re-rank by relevance before picking the top result
+                auto query_tokens = phonedb_tokenise(name_param);
+                std::stable_sort(devices.begin(), devices.end(),
+                    [&query_tokens](const ScrapedTag& a, const ScrapedTag& b) {
+                        return phonedb_relevance_score(a.title, query_tokens) >
+                               phonedb_relevance_score(b.title, query_tokens);
+                    }
+                );
 
                 // Retrieve ID from the top result
                 const auto& top_result = devices[0];
