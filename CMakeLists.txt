@@ -89,6 +89,7 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/handler.cpp
     src/log.cpp
+    src/integrations/phonedb.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
