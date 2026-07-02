@@ -1,5 +1,6 @@
 #include "commands/ping.hpp"
 #include "commands/phonedb/phonesearch.hpp"
+#include "commands/phonedb/phoneinfo.hpp"
 #include "handler.hpp"
 #include "log.hpp"
 #include <dotenv.hpp>
@@ -16,6 +17,7 @@ int main() {
   // Register all commands
   cmd_manager.add_command(create_ping_command());
   cmd_manager.add_command(create_phone_search_command());
+  cmd_manager.add_command(create_phone_info_command());
 
   bot.on_ready([&bot, &cmd_manager](const dpp::ready_t &event) {
     if (dpp::run_once<struct register_bot_commands>()) {

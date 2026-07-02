@@ -1,6 +1,7 @@
 #pragma once
 #include "handler.hpp"
 #include "integrations/phonedb.hpp"
+#include "integrations/scraper.hpp"
 #include <sstream>
 
 inline Command create_phone_search_command() {
@@ -26,6 +27,9 @@ inline Command create_phone_search_command() {
 
             // Acknowledge the command first as scraping might take a few seconds
             event.thinking();
+
+            // URL-encode the query for use in embed URLs
+            std::string encoded_query = scraper_url_encode(phone_query);
 
             // Perform scraping
             std::vector<ScrapedTag> all_tags = search_phonedb(phone_query);
@@ -59,7 +63,7 @@ inline Command create_phone_search_command() {
             dpp::embed embed = dpp::embed()
                 .set_color(dpp::colors::sti_blue)
                 .set_title("PhoneDB Search Results: " + phone_query)
-                .set_url("https://phonedb.net/index.php?m=device&s=list&search_exp=" + phone_query)
+                .set_url("https://phonedb.net/index.php?m=device&s=list&search_exp=" + encoded_query)
                 .set_footer(
                     dpp::embed_footer()
                     .set_text("Wenlock")
@@ -75,9 +79,21 @@ inline Command create_phone_search_command() {
                 size_t limit = std::min(devices.size(), size_t(10));
                 for (size_t i = 0; i < limit; ++i) {
                     std::string device_url = "https://phonedb.net/" + devices[i].href;
+                    std::string device_id = "";
+                    size_t id_pos = devices[i].href.find("id=");
+                    if (id_pos != std::string::npos) {
+                        size_t start = id_pos + 3;
+                        size_t end = devices[i].href.find('&', start);
+                        if (end == std::string::npos) {
+                            device_id = devices[i].href.substr(start);
+                        } else {
+                            device_id = devices[i].href.substr(start, end - start);
+                        }
+                    }
+
                     embed.add_field(
                         devices[i].title,
-                        "[View Specifications](" + device_url + ")",
+                        "**ID:** `" + device_id + "` | [View Specifications](" + device_url + ")",
                         false
                     );
                 }
@@ -85,7 +101,7 @@ inline Command create_phone_search_command() {
                     embed.add_field(
                         "More Results",
                         "[View all " + std::to_string(devices.size()) + " results on PhoneDB](" + 
-                        "https://phonedb.net/index.php?m=device&s=list&search_exp=" + phone_query + ")",
+                        "https://phonedb.net/index.php?m=device&s=list&search_exp=" + encoded_query + ")",
                         false
                     );
                 }

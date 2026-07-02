@@ -90,6 +90,7 @@ add_executable(${PROJECT_NAME}
     src/handler.cpp
     src/log.cpp
     src/integrations/phonedb.cpp
+    src/integrations/scraper.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
