@@ -1,7 +1,6 @@
 #pragma once
 #include "handler.hpp"
 #include "integrations/phonedb.hpp"
-#include "commands/phonedb/rank.hpp"
 #include <algorithm>
 
 inline Command create_phone_info_command() {

@@ -1,4 +1,5 @@
 #include "commands/ping.hpp"
+#include "commands/embedtest.hpp"
 #include "commands/phonedb/phonesearch.hpp"
 #include "commands/phonedb/phoneinfo.hpp"
 #include "handler.hpp"
@@ -16,6 +17,7 @@ int main() {
 
   // Register all commands
   cmd_manager.add_command(create_ping_command());
+  cmd_manager.add_command(create_embed_command());
   cmd_manager.add_command(create_phone_search_command());
   cmd_manager.add_command(create_phone_info_command());
 

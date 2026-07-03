@@ -2,7 +2,6 @@
 #include "handler.hpp"
 #include "integrations/phonedb.hpp"
 #include "integrations/scraper.hpp"
-#include "commands/phonedb/rank.hpp"
 #include <sstream>
 
 inline Command create_phone_search_command() {
@@ -78,7 +77,7 @@ inline Command create_phone_search_command() {
             if (devices.empty()) {
                 embed.set_description("No devices found matching your search query.");
             } else {
-                embed.set_description("Here are the top results from PhoneDB:");
+                embed.set_description("Top results from PhoneDB:");
                 // Limit to top 10 results to fit comfortably in a Discord embed
                 size_t limit = std::min(devices.size(), size_t(10));
                 for (size_t i = 0; i < limit; ++i) {
