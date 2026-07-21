@@ -1,7 +1,9 @@
 # wenlock2
 
-c++ discord bot using dpp and sqlite3
+c++ discord bot
 
-scrapes phonedb.net search and device pages
-
-cmake c++ 23
+- D++
+- Libxml2 (XML/HTML Parsing)
+- Libcurl (REST)
+- SQLite3
+- Redis?

@@ -15,3 +15,4 @@ struct GithubIssue {
     std::optional<std::vector<std::string>> labels;
     std::optional<std::vector<std::string>> projects
 }
+
