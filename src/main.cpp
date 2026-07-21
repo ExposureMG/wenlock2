@@ -37,6 +37,65 @@ int main() {
   bot.on_slashcommand([&cmd_manager](const dpp::slashcommand_t &event) {
     cmd_manager.handle_command(event);
   });
+
+  bot.on_select_click([](const dpp::select_click_t &event) {
+    if (event.custom_id == "test_dropdown") {
+      std::string chosen = event.values.empty() ? "none" : event.values[0];
+      event.reply(dpp::ir_update_message, "You selected option: " + chosen);
+    } else if (event.custom_id == "phonesearch_result") {
+      if (event.values.empty()) {
+        event.reply(dpp::ir_update_message, "No device selected.");
+        return;
+      }
+
+      const std::string device_id = event.values[0];
+
+      // Acknowledge immediately — spec fetch may take a moment
+      event.reply(dpp::ir_deferred_update_message, "");
+
+      auto specs = get_phonedb_specs(device_id);
+      if (specs.empty()) {
+        dpp::embed err = dpp::embed()
+            .set_color(dpp::colors::red)
+            .set_description("Could not retrieve specifications for device ID `" + device_id + "`.");
+        event.edit_original_response(dpp::message(err));
+        return;
+      }
+
+      // Extract Brand and Model for the embed title
+      std::string brand, model;
+      for (const auto& pair : specs) {
+        if (pair.first == "Brand") brand = pair.second;
+        if (pair.first == "Model") model = pair.second;
+      }
+
+      dpp::embed embed = dpp::embed()
+          .set_color(dpp::colors::sti_blue)
+          .set_url("https://phonedb.net/index.php?m=device&id=" + device_id)
+          .set_footer(
+              dpp::embed_footer()
+              .set_text("PhoneDB ID: " + device_id)
+              .set_icon("https://raw.githubusercontent.com/GxOSS/.github/refs/heads/main/assets/gx_icon_colour_trans.png")
+          )
+          .set_timestamp(time(0));
+
+      if (!brand.empty() || !model.empty()) {
+        embed.set_title(brand + " " + model);
+      } else {
+        embed.set_title("Device Specifications");
+      }
+
+      size_t limit = std::min(specs.size(), size_t(24));
+      for (size_t i = 0; i < limit; ++i) {
+        std::string val = specs[i].second;
+        if (val.length() > 1024) val = val.substr(0, 1021) + "...";
+        embed.add_field(specs[i].first, val, true);
+      }
+
+      event.edit_original_response(dpp::message(embed));
+    }
+  });
+
   bot.start(dpp::st_wait);
   return 0;
 }

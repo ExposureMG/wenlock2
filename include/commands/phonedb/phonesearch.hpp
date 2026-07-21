@@ -44,7 +44,7 @@ inline Command create_phone_search_command() {
                     tag.title.find("Add this item") == std::string::npos &&
                     tag.title.find("detailed datasheet") == std::string::npos &&
                     !tag.title.empty()) {
-                    
+
                     // Avoid duplicate entries
                     bool duplicate = false;
                     for (const auto& dev : devices) {
@@ -63,9 +63,56 @@ inline Command create_phone_search_command() {
                 }
             );
 
+            if (devices.empty()) {
+                dpp::embed embed = dpp::embed()
+                    .set_color(dpp::colors::red)
+                    .set_title("PhoneDB Search: " + phone_query)
+                    .set_description("No devices found matching your search query.")
+                    .set_footer(
+                        dpp::embed_footer()
+                        .set_text("Wenlock")
+                        .set_icon("https://raw.githubusercontent.com/GxOSS/.github/refs/heads/main/assets/gx_icon_colour_trans.png")
+                    )
+                    .set_timestamp(time(0));
+                event.edit_original_response(dpp::message(event.command.channel_id, embed));
+                return;
+            }
+
+            // Discord select menus allow at most 25 options
+            size_t limit = std::min(devices.size(), size_t(25));
+
+            dpp::component select_menu;
+            select_menu.set_type(dpp::cot_selectmenu)
+                       .set_id("phonesearch_result")
+                       .set_placeholder("Select a device to view its specs");
+
+            for (size_t i = 0; i < limit; ++i) {
+                // Extract device ID from href
+                std::string device_id;
+                size_t id_pos = devices[i].href.find("id=");
+                if (id_pos != std::string::npos) {
+                    size_t start = id_pos + 3;
+                    size_t end = devices[i].href.find('&', start);
+                    device_id = (end == std::string::npos)
+                        ? devices[i].href.substr(start)
+                        : devices[i].href.substr(start, end - start);
+                }
+
+                if (device_id.empty()) continue;
+
+                // Truncate label to Discord's 100-char limit
+                std::string label = devices[i].title;
+                if (label.length() > 100) label = label.substr(0, 97) + "...";
+
+                select_menu.add_select_option(dpp::select_option(label, device_id));
+            }
+
             dpp::embed embed = dpp::embed()
                 .set_color(dpp::colors::sti_blue)
-                .set_title("PhoneDB Search Results: " + phone_query)
+                .set_title("PhoneDB Search: " + phone_query)
+                .set_description("Found **" + std::to_string(limit) + "** result" +
+                    (limit == 1 ? "" : "s") +
+                    ". Select a device below to view its specifications.")
                 .set_url("https://phonedb.net/index.php?m=device&s=list&search_exp=" + encoded_query)
                 .set_footer(
                     dpp::embed_footer()
@@ -74,43 +121,13 @@ inline Command create_phone_search_command() {
                 )
                 .set_timestamp(time(0));
 
-            if (devices.empty()) {
-                embed.set_description("No devices found matching your search query.");
-            } else {
-                embed.set_description("Top results from PhoneDB:");
-                // Limit to top 10 results to fit comfortably in a Discord embed
-                size_t limit = std::min(devices.size(), size_t(10));
-                for (size_t i = 0; i < limit; ++i) {
-                    std::string device_url = "https://phonedb.net/" + devices[i].href;
-                    std::string device_id = "";
-                    size_t id_pos = devices[i].href.find("id=");
-                    if (id_pos != std::string::npos) {
-                        size_t start = id_pos + 3;
-                        size_t end = devices[i].href.find('&', start);
-                        if (end == std::string::npos) {
-                            device_id = devices[i].href.substr(start);
-                        } else {
-                            device_id = devices[i].href.substr(start, end - start);
-                        }
-                    }
-
-                    embed.add_field(
-                        devices[i].title,
-                        "**ID:** `" + device_id + "` | [View Specifications](" + device_url + ")",
-                        false
-                    );
-                }
-                if (devices.size() > 10) {
-                    embed.add_field(
-                        "More Results",
-                        "[View all " + std::to_string(devices.size()) + " results on PhoneDB](" + 
-                        "https://phonedb.net/index.php?m=device&s=list&search_exp=" + encoded_query + ")",
-                        false
-                    );
-                }
-            }
-
             dpp::message msg(event.command.channel_id, embed);
+            msg.add_component(
+                dpp::component()
+                    .set_type(dpp::cot_action_row)
+                    .add_component(select_menu)
+            );
+
             event.edit_original_response(msg);
         }
     };
