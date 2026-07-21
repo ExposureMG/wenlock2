@@ -10,6 +10,8 @@
 #include <dpp/dpp.h>
 
 int main() {
+  std::setvbuf(stdout, NULL, _IONBF, 0);
+  std::setvbuf(stderr, NULL, _IONBF, 0);
   Log::Init();
   dotenv::init();
   dpp::cluster bot(dotenv::getenv("TOKEN"));

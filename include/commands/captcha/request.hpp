@@ -10,7 +10,7 @@ inline Command create_captcha_request_command() {
         .parameters = {},
         .handler = [](const dpp::slashcommand_t& event) {
             std::string user_id = std::to_string(event.command.usr.id);
-            std::string url = "http://webserver:8080/create-session/" + user_id;
+            std::string url = "http://wenlock2-server:8080/create-session/" + user_id;
 
             event.owner->request(url, dpp::m_post, [event](const dpp::http_request_completion_t& res) {
                 if (res.status == 200) {

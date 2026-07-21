@@ -10,7 +10,7 @@ inline Command create_captcha_verify_command() {
         .handler = [](const dpp::slashcommand_t& event) {
             constexpr dpp::snowflake VERIFIED_ROLE_ID = 123456789012345678; // Change to your Role ID
             std::string user_id = std::to_string(event.command.usr.id);
-            std::string url = "http://webserver:8080/check-status/" + user_id;
+            std::string url = "http://wenlock2-server:8080/check-status/" + user_id;
 
             event.owner->request(url, dpp::m_get, [event, user_id](const dpp::http_request_completion_t& res) {
                 if (res.status == 200) {

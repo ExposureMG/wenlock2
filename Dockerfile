@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     sqlite3 \
     libsqlite3-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -31,6 +32,7 @@ RUN apt-get update && apt-get install -y \
     libxml2 \
     libcurl4 \
     libsqlite3-0 \
+    zlib1g \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
