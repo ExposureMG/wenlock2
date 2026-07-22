@@ -15,32 +15,33 @@ static std::string trim(const std::string& str) {
     return str.substr(first, (last - first + 1));
 }
 
-std::vector<ScrapedTag> search_phonedb(const std::string& search_term) {
+std::vector<ScrapedTag> search_phonedb(const std::string& search_term, int filter_offset) {
     std::string encoded = scraper_url_encode(search_term);
     std::string url = "https://phonedb.net/index.php?m=device&s=list&search_exp=" + encoded;
+    if (filter_offset > 0) {
+        url += "&filter=" + std::to_string(filter_offset);
+    }
     std::string html = scraper_fetch_url(url);
     
     // Query all <a> tags that have a 'title' attribute
     auto elements = scraper_xpath(html, "//a[@title]", {"title", "href"});
     
     std::vector<ScrapedTag> results;
-    results.reserve(25);
+    results.reserve(elements.size());
     for (const auto& elem : elements) {
-        if (results.size() >= 25) break;
-
         ScrapedTag tag;
         tag.text = trim(elem.text);
-        
+
         auto it_title = elem.attributes.find("title");
         if (it_title != elem.attributes.end()) {
             tag.title = trim(it_title->second);
         }
-        
+
         auto it_href = elem.attributes.find("href");
         if (it_href != elem.attributes.end()) {
             tag.href = trim(it_href->second);
         }
-        
+
         results.push_back(tag);
     }
     

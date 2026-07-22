@@ -1,3 +1,4 @@
+#include "integrations/database.hpp"
 #include <SQLiteCpp/Database.h>
 #include <SQLiteCpp/Statement.h>
 #include <dpp/dpp.h>
@@ -39,6 +40,12 @@ void create_tables(SQLite::Database& db) {
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "setting_key TEXT NOT NULL, setting_value TEXT, "
             "UNIQUE(setting_key))");
+
+    db.exec("CREATE TABLE IF NOT EXISTS captcha_config ("
+            "guild_id   INTEGER PRIMARY KEY, "
+            "channel_id INTEGER NOT NULL, "
+            "role_id    INTEGER NOT NULL, "
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 }
 
 bool init_guild(dpp::snowflake guild_id, SQLite::Database& db) {
@@ -122,4 +129,31 @@ void set_guild_user_property(dpp::snowflake guild_id, dpp::snowflake user_id,
     stmt.bind(1, user_key);
     stmt.bind(2, value);
     stmt.exec();
+}
+
+// ── Captcha config ────────────────────────────────────────────────────────────
+
+void set_captcha_config(dpp::snowflake guild_id, dpp::snowflake channel_id,
+                        dpp::snowflake role_id, SQLite::Database& db) {
+    SQLite::Statement stmt(db,
+        "INSERT OR REPLACE INTO captcha_config (guild_id, channel_id, role_id) "
+        "VALUES (?, ?, ?)");
+    stmt.bind(1, static_cast<int64_t>(guild_id));
+    stmt.bind(2, static_cast<int64_t>(channel_id));
+    stmt.bind(3, static_cast<int64_t>(role_id));
+    stmt.exec();
+}
+
+std::pair<dpp::snowflake, dpp::snowflake>
+get_captcha_config(dpp::snowflake guild_id, SQLite::Database& db) {
+    SQLite::Statement stmt(db,
+        "SELECT channel_id, role_id FROM captcha_config WHERE guild_id = ?");
+    stmt.bind(1, static_cast<int64_t>(guild_id));
+    if (stmt.executeStep()) {
+        return {
+            static_cast<dpp::snowflake>(stmt.getColumn(0).getInt64()),
+            static_cast<dpp::snowflake>(stmt.getColumn(1).getInt64())
+        };
+    }
+    return {0, 0};
 }

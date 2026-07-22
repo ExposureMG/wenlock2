@@ -91,6 +91,7 @@ add_executable(${PROJECT_NAME}
     src/log.cpp
     src/integrations/phonedb.cpp
     src/integrations/scraper.cpp
+    src/integrations/database.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

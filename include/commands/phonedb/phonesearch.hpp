@@ -4,6 +4,11 @@
 #include "integrations/scraper.hpp"
 #include <sstream>
 
+// PhoneDB pagination stride (devices per page)
+static constexpr int PHONEDB_PAGE_STRIDE = 29;
+// Maximum pages to fetch before giving up
+static constexpr int PHONEDB_MAX_PAGES   = 3;
+
 inline Command create_phone_search_command() {
     return Command{
         .name = "phonesearch",
@@ -25,49 +30,61 @@ inline Command create_phone_search_command() {
                 return;
             }
 
-            // Acknowledge the command first as scraping might take a few seconds
+            // Acknowledge immediately — multiple fetches may take several seconds
             event.thinking();
 
             // URL-encode the query for use in embed URLs
             std::string encoded_query = scraper_url_encode(phone_query);
+            auto query_tokens = phonedb_tokenise(phone_query);
 
-            // Perform scraping
-            std::vector<ScrapedTag> all_tags = search_phonedb(phone_query);
+            // Helper: filter raw scraped tags down to unique, valid device entries
+            auto filter_devices = [](const std::vector<ScrapedTag>& raw,
+                                     std::vector<ScrapedTag>& out) {
+                for (const auto& tag : raw) {
+                    if (tag.href.find("m=device") == std::string::npos) continue;
+                    if (tag.href.find("id=")      == std::string::npos) continue;
+                    if (tag.href.find("&d=")      != std::string::npos) continue;
+                    if (tag.href.find("?d=")      != std::string::npos) continue;
+                    if (tag.title.find("Add this item")        != std::string::npos) continue;
+                    if (tag.title.find("detailed datasheet")   != std::string::npos) continue;
+                    if (tag.title.empty()) continue;
+
+                    // Dedup by href
+                    bool dup = false;
+                    for (const auto& d : out) {
+                        if (d.href == tag.href) { dup = true; break; }
+                    }
+                    if (!dup) out.push_back(tag);
+                }
+            };
+
+            // ── Paginated search loop ─────────────────────────────────────────
+            // Fetch up to PHONEDB_MAX_PAGES pages.
+            // Only advance to the next page when the current accumulated set
+            // still contains zero valid device entries.
             std::vector<ScrapedTag> devices;
 
-            // Filter for actual device link tags
-            for (const auto& tag : all_tags) {
-                if (tag.href.find("m=device") != std::string::npos &&
-                    tag.href.find("id=") != std::string::npos &&
-                    tag.href.find("&d=") == std::string::npos &&
-                    tag.href.find("?d=") == std::string::npos &&
-                    tag.title.find("Add this item") == std::string::npos &&
-                    tag.title.find("detailed datasheet") == std::string::npos &&
-                    !tag.title.empty()) {
+            for (int page = 0; page < PHONEDB_MAX_PAGES; ++page) {
+                int offset = page * PHONEDB_PAGE_STRIDE;
+                auto raw = search_phonedb(phone_query, offset);
 
-                    // Avoid duplicate entries
-                    bool duplicate = false;
-                    for (const auto& dev : devices) {
-                        if (dev.href == tag.href) { duplicate = true; break; }
-                    }
-                    if (!duplicate) devices.push_back(tag);
-                }
+                // If PhoneDB returned no anchor tags at all, we've gone past the
+                // end of its results — no point fetching further pages.
+                if (raw.empty()) break;
+
+                filter_devices(raw, devices);
+
+                // Stop as soon as we have at least one matching device
+                if (!devices.empty()) break;
             }
 
-            // Re-rank results by relevance to the query
-            auto query_tokens = phonedb_tokenise(phone_query);
-            std::stable_sort(devices.begin(), devices.end(),
-                [&query_tokens](const ScrapedTag& a, const ScrapedTag& b) {
-                    return phonedb_relevance_score(a.title, query_tokens) >
-                           phonedb_relevance_score(b.title, query_tokens);
-                }
-            );
+            // ─────────────────────────────────────────────────────────────────
 
             if (devices.empty()) {
                 dpp::embed embed = dpp::embed()
                     .set_color(dpp::colors::red)
                     .set_title("PhoneDB Search: " + phone_query)
-                    .set_description("No devices found matching your search query.")
+                    .set_description("No Results")
                     .set_footer(
                         dpp::embed_footer()
                         .set_text("Wenlock")
@@ -77,6 +94,14 @@ inline Command create_phone_search_command() {
                 event.edit_original_response(dpp::message(event.command.channel_id, embed));
                 return;
             }
+
+            // Re-rank all collected devices by relevance to the query
+            std::stable_sort(devices.begin(), devices.end(),
+                [&query_tokens](const ScrapedTag& a, const ScrapedTag& b) {
+                    return phonedb_relevance_score(a.title, query_tokens) >
+                           phonedb_relevance_score(b.title, query_tokens);
+                }
+            );
 
             // Discord select menus allow at most 25 options
             size_t limit = std::min(devices.size(), size_t(25));

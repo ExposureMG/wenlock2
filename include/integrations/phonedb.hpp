@@ -12,8 +12,9 @@ struct ScrapedTag {
     std::string text;
 };
 
-// Search PhoneDB for devices matching a query
-std::vector<ScrapedTag> search_phonedb(const std::string& search_term);
+// Search PhoneDB for devices matching a query. filter_offset maps to PhoneDB's
+// &filter= pagination param (stride = 29 devices per page: 0, 29, 58, ...).
+std::vector<ScrapedTag> search_phonedb(const std::string& search_term, int filter_offset = 0);
 
 // Scrape the specifications of a specific phone by its ID
 std::vector<std::pair<std::string, std::string>> get_phonedb_specs(const std::string& device_id);

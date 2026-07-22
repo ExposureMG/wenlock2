@@ -2,18 +2,27 @@
 #include "commands/embedtest.hpp"
 #include "commands/phonedb/phonesearch.hpp"
 #include "commands/phonedb/phoneinfo.hpp"
+#include "commands/captcha/linkcaptcha.hpp"
 #include "commands/captcha/request.hpp"
 #include "commands/captcha/verify.hpp"
 #include "handler.hpp"
+#include "integrations/database.hpp"
 #include "log.hpp"
 #include <dotenv.hpp>
 #include <dpp/dpp.h>
+#include <mutex>
 
 int main() {
   std::setvbuf(stdout, NULL, _IONBF, 0);
   std::setvbuf(stderr, NULL, _IONBF, 0);
   Log::Init();
   dotenv::init();
+
+  // Initialise database
+  SQLite::Database db = init_database();
+  create_tables(db);
+  std::mutex db_mutex;
+
   dpp::cluster bot(dotenv::getenv("TOKEN"));
   CommandManager cmd_manager;
 
@@ -24,9 +33,9 @@ int main() {
   cmd_manager.add_command(create_embed_command());
   cmd_manager.add_command(create_phone_search_command());
   cmd_manager.add_command(create_phone_info_command());
-  cmd_manager.add_command(create_captcha_request_command());
-  cmd_manager.add_command(create_captcha_verify_command());
-
+  cmd_manager.add_command(create_linkcaptcha_command(db, db_mutex));
+  cmd_manager.add_command(create_captcha_request_command(db, db_mutex));
+  cmd_manager.add_command(create_captcha_verify_command(db, db_mutex));
 
   bot.on_ready([&bot, &cmd_manager](const dpp::ready_t &event) {
     if (dpp::run_once<struct register_bot_commands>()) {
